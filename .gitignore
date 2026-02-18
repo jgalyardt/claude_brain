@@ -42,3 +42,6 @@ npm-debug.log
 # Environment secrets
 .env
 
+# SSL certificates
+/priv/ssl/
+
