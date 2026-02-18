@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Attach an IEx shell to the running Evo node
+# Useful for: Evo.Evolver.run_once() / .pause() / .resume() / .status()
+set -euo pipefail
+iex --sname console --remsh evo

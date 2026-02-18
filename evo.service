@@ -1,0 +1,25 @@
+# systemd service — auto-start Evo on boot
+# Install:
+#   sudo cp evo.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now evo
+#
+# Logs:  journalctl -u evo -f
+
+[Unit]
+Description=Evo - Self-Evolving Elixir Application
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/claude_brain/evo
+EnvironmentFile=/home/pi/claude_brain/evo/.env
+Environment=MIX_ENV=prod
+ExecStart=/usr/local/bin/elixir --sname evo -S mix phx.server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

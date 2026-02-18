@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# First-time setup on the Pi
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+echo "==> Generating SECRET_KEY_BASE..."
+SECRET=$(mix phx.gen.secret)
+
+echo "==> Creating .env from template..."
+if [ ! -f .env ]; then
+  cp .env.example .env
+  sed -i "s|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=$SECRET|" .env
+  echo "    Edit .env to set ANTHROPIC_API_KEY, DATABASE_PATH, PHX_HOST, and EVO_DASHBOARD_PASS"
+else
+  echo "    .env already exists, skipping"
+fi
+
+echo "==> Installing dependencies..."
+MIX_ENV=prod mix deps.get
+
+echo "==> Setting up database..."
+MIX_ENV=prod mix ecto.setup
+
+echo "==> Building assets..."
+MIX_ENV=prod mix assets.deploy
+
+echo "==> Configuring git identity for Historian..."
+git config user.email "evo@pi"
+git config user.name "Evo"
+
+echo ""
+echo "Done! Edit .env, then run: bin/start"
