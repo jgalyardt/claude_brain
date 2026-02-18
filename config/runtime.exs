@@ -19,6 +19,10 @@ import Config
 # Evo: Anthropic API key for Claude
 config :evo, :anthropic_api_key, System.get_env("ANTHROPIC_API_KEY")
 
+# Evo: Daily token budget (defaults to 100,000)
+config :evo, :daily_token_budget,
+  String.to_integer(System.get_env("EVO_DAILY_TOKEN_BUDGET") || "100000")
+
 # Evo: Dashboard auth (set EVO_DASHBOARD_USER / EVO_DASHBOARD_PASS env vars)
 config :evo, :dashboard_username, System.get_env("EVO_DASHBOARD_USER") || "evo"
 config :evo, :dashboard_password, System.get_env("EVO_DASHBOARD_PASS") || "changeme"

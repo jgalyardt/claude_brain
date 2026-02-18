@@ -7,7 +7,8 @@ defmodule Evo.Evolvable.Strategy do
   @evolvable_modules [
     Evo.Evolvable.PromptBuilder,
     Evo.Evolvable.Fitness,
-    Evo.Evolvable.Strategy
+    Evo.Evolvable.Strategy,
+    Evo.Evolvable.CreativeDisplay
   ]
 
   @doc """

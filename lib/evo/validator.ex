@@ -8,7 +8,16 @@ defmodule Evo.Validator do
   5. Test suite execution
   """
 
-  @max_changed_lines 50
+  @min_changed_lines 20
+  @max_changed_lines 80
+
+  @doc "Returns the maximum allowed changed lines, scaled to module size."
+  @spec max_changed_lines(non_neg_integer()) :: non_neg_integer()
+  def max_changed_lines(module_line_count \\ 0) do
+    # Allow up to 60% of the module to change, clamped between min and max
+    scaled = round(module_line_count * 0.6)
+    scaled |> max(@min_changed_lines) |> min(@max_changed_lines)
+  end
 
   # Modules whose atoms are allowed to appear in remote calls.
   # Everything else is rejected. This is an ALLOWLIST, not a denylist.
@@ -16,7 +25,8 @@ defmodule Evo.Validator do
     Kernel, Enum, List, Map, MapSet, Keyword, String, Integer, Float,
     Atom, Tuple, IO, Inspect, Access, Range, Stream, Function,
     Regex, URI, Path, Base, Bitwise, Agent, Task,
-    Evo.Evolvable.PromptBuilder, Evo.Evolvable.Fitness, Evo.Evolvable.Strategy
+    Evo.Evolvable.PromptBuilder, Evo.Evolvable.Fitness, Evo.Evolvable.Strategy,
+    Evo.Evolvable.CreativeDisplay
   ]
 
   # Functions that must NEVER appear, even via allowed modules.
@@ -76,11 +86,12 @@ defmodule Evo.Validator do
     new_lines = String.split(new, "\n")
 
     changed = abs(length(new_lines) - length(old_lines)) + count_different_lines(old_lines, new_lines)
+    limit = max_changed_lines(length(old_lines))
 
-    if changed <= @max_changed_lines do
+    if changed <= limit do
       :ok
     else
-      {:error, {:too_many_changes, changed, @max_changed_lines}}
+      {:error, {:too_many_changes, changed, limit}}
     end
   end
 

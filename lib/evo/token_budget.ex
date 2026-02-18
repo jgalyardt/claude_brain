@@ -42,7 +42,9 @@ defmodule Evo.TokenBudget do
 
   @impl true
   def init(opts) do
-    daily_budget = Keyword.get(opts, :daily_budget, @default_daily_budget)
+    daily_budget =
+      Keyword.get(opts, :daily_budget) ||
+        Application.get_env(:evo, :daily_token_budget, @default_daily_budget)
 
     state = %{
       daily_budget: daily_budget,

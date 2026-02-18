@@ -7,6 +7,8 @@ defmodule Evo.Application do
 
   @impl true
   def start(_type, _args) do
+    validate_config!()
+
     children = [
       EvoWeb.Telemetry,
       Evo.Repo,
@@ -34,6 +36,18 @@ defmodule Evo.Application do
   def config_change(changed, _new, removed) do
     EvoWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp validate_config! do
+    unless Application.get_env(:evo, :skip_api_key_validation) do
+      unless Application.get_env(:evo, :anthropic_api_key) do
+        raise """
+        ANTHROPIC_API_KEY environment variable is not set.
+        Evo requires a valid Anthropic API key to run the evolution loop.
+        Export it before starting: export ANTHROPIC_API_KEY=sk-ant-...
+        """
+      end
+    end
   end
 
   defp skip_migrations?() do

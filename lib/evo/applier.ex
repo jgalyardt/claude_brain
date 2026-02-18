@@ -13,7 +13,8 @@ defmodule Evo.Applier do
   @allowed_paths %{
     Evo.Evolvable.PromptBuilder => "lib/evo/evolvable/prompt_builder.ex",
     Evo.Evolvable.Fitness => "lib/evo/evolvable/fitness.ex",
-    Evo.Evolvable.Strategy => "lib/evo/evolvable/strategy.ex"
+    Evo.Evolvable.Strategy => "lib/evo/evolvable/strategy.ex",
+    Evo.Evolvable.CreativeDisplay => "lib/evo/evolvable/creative_display.ex"
   }
 
   @doc """

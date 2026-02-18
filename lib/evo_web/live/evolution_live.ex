@@ -66,40 +66,56 @@ defmodule EvoWeb.EvolutionLive do
     budget_status = TokenBudget.status()
     generations = Historian.recent_generations(50)
 
+    creative_html =
+      try do
+        Evo.Evolvable.CreativeDisplay.render(%{
+          generation: evolver_status.generation,
+          accept_rate: evolver_status.accept_rate,
+          budget_used: budget_status.budget_percentage_used
+        })
+      rescue
+        _ -> "<div style='color: red; padding: 20px;'>CreativeDisplay render failed</div>"
+      end
+
     socket
     |> assign(:evolver, evolver_status)
     |> assign(:model, model_status)
     |> assign(:budget, budget_status)
     |> assign(:generations, generations)
+    |> assign(:creative_html, creative_html)
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="max-w-7xl mx-auto p-6 space-y-6">
-      <h1 class="text-3xl font-bold text-gray-900">Evo: Evolution Dashboard</h1>
+    <div class="space-y-6">
+      <!-- Header -->
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-base-content tracking-tight">Evolution Dashboard</h1>
+          <p class="text-sm text-base-content/50 font-mono">generation #{@evolver.generation}</p>
+        </div>
+        <div class="flex gap-3 items-center">
+          <%= if @evolver.running do %>
+            <button phx-click="pause" class="btn btn-warning btn-sm">Pause</button>
+          <% else %>
+            <button phx-click="resume" class="btn btn-success btn-sm">Resume</button>
+          <% end %>
+          <button phx-click="run_once" class="btn btn-primary btn-sm">Run Once</button>
+          <span class={"badge #{if @evolver.running, do: "badge-success", else: "badge-neutral"} badge-sm gap-1"}>
+            <span class={"inline-block w-1.5 h-1.5 rounded-full #{if @evolver.running, do: "bg-success-content animate-pulse", else: "bg-neutral-content"}"} />
+            <%= if @evolver.running, do: "Running", else: "Paused" %>
+          </span>
+        </div>
+      </div>
 
-      <!-- Controls -->
-      <div class="flex gap-4 items-center">
-        <%= if @evolver.running do %>
-          <button phx-click="pause" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded font-medium">
-            Pause
-          </button>
-        <% else %>
-          <button phx-click="resume" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-medium">
-            Resume
-          </button>
-        <% end %>
-        <button phx-click="run_once" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium">
-          Run Once
-        </button>
-        <span class={"inline-flex items-center px-3 py-1 rounded-full text-sm font-medium #{if @evolver.running, do: "bg-green-100 text-green-800", else: "bg-gray-100 text-gray-800"}"}>
-          <%= if @evolver.running, do: "Running", else: "Paused" %>
-        </span>
+      <!-- Creative Display — evolved by Claude -->
+      <div class="rounded-box overflow-hidden shadow-lg">
+        <%= Phoenix.HTML.raw(@creative_html) %>
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <.stat_card title="Generation" value={@evolver.generation} />
         <.stat_card title="Accept Rate" value={"#{@evolver.accept_rate}%"} />
         <.stat_card title="Model" value={@model.current_model} />
@@ -107,94 +123,74 @@ defmodule EvoWeb.EvolutionLive do
       </div>
 
       <!-- Model & Budget Details -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Model Usage -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold mb-4">Model Usage</h2>
-          <div class="space-y-2">
-            <div class="flex justify-between">
-              <span>Haiku calls:</span>
-              <span class="font-mono"><%= @model.total_haiku_calls %></span>
-            </div>
-            <div class="flex justify-between">
-              <span>Sonnet calls:</span>
-              <span class="font-mono"><%= @model.total_sonnet_calls %></span>
-            </div>
-            <div class="flex justify-between">
-              <span>Consecutive failures:</span>
-              <span class="font-mono"><%= @model.consecutive_failures %></span>
-            </div>
-            <div class="flex justify-between">
-              <span>Escalations:</span>
-              <span class="font-mono"><%= @model.escalations %></span>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card bg-base-200 shadow-sm">
+          <div class="card-body p-5">
+            <h2 class="card-title text-sm font-semibold text-base-content/70 uppercase tracking-wider">Model Usage</h2>
+            <div class="space-y-2 mt-2">
+              <.detail_row label="Haiku calls" value={@model.total_haiku_calls} />
+              <.detail_row label="Sonnet calls" value={@model.total_sonnet_calls} />
+              <.detail_row label="Consecutive failures" value={@model.consecutive_failures} />
+              <.detail_row label="Escalations" value={@model.escalations} />
             </div>
           </div>
         </div>
 
-        <!-- Token Budget -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold mb-4">Token Budget</h2>
-          <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
-            <div
-              class={"h-4 rounded-full #{if @budget.budget_percentage_used > 80, do: "bg-red-500", else: "bg-blue-500"}"}
-              style={"width: #{min(@budget.budget_percentage_used, 100)}%"}
-            />
-          </div>
-          <div class="space-y-2">
-            <div class="flex justify-between">
-              <span>Used today:</span>
-              <span class="font-mono"><%= @budget.tokens_used_today %> / <%= @budget.daily_budget %></span>
+        <div class="card bg-base-200 shadow-sm">
+          <div class="card-body p-5">
+            <h2 class="card-title text-sm font-semibold text-base-content/70 uppercase tracking-wider">Token Budget</h2>
+            <div class="w-full bg-base-300 rounded-full h-2.5 mt-3 mb-3">
+              <div
+                class={"h-2.5 rounded-full transition-all duration-500 #{if @budget.budget_percentage_used > 80, do: "bg-error", else: "bg-primary"}"}
+                style={"width: #{min(@budget.budget_percentage_used, 100)}%"}
+              />
             </div>
-            <div class="flex justify-between">
-              <span>API calls today:</span>
-              <span class="font-mono"><%= @budget.api_calls_today %></span>
-            </div>
-            <div class="flex justify-between">
-              <span>Total in:</span>
-              <span class="font-mono"><%= @budget.total_tokens_in %></span>
-            </div>
-            <div class="flex justify-between">
-              <span>Total out:</span>
-              <span class="font-mono"><%= @budget.total_tokens_out %></span>
+            <div class="space-y-2">
+              <.detail_row label="Used today" value={"#{@budget.tokens_used_today} / #{@budget.daily_budget}"} />
+              <.detail_row label="API calls today" value={@budget.api_calls_today} />
+              <.detail_row label="Total in" value={@budget.total_tokens_in} />
+              <.detail_row label="Total out" value={@budget.total_tokens_out} />
             </div>
           </div>
         </div>
       </div>
 
       <!-- Generation History -->
-      <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-lg font-semibold mb-4">Evolution History</h2>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th class="px-4 py-2">Gen</th>
-                <th class="px-4 py-2">Module</th>
-                <th class="px-4 py-2">Status</th>
-                <th class="px-4 py-2">Score</th>
-                <th class="px-4 py-2">Model</th>
-                <th class="px-4 py-2">Tokens</th>
-                <th class="px-4 py-2">Reasoning</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <%= for gen <- @generations do %>
-                <tr class="hover:bg-gray-50">
-                  <td class="px-4 py-2 font-mono text-sm"><%= gen.generation_number %></td>
-                  <td class="px-4 py-2 text-sm"><%= short_module(gen.target_module) %></td>
-                  <td class="px-4 py-2">
-                    <span class={"inline-flex px-2 py-1 rounded-full text-xs font-medium #{status_color(gen.status)}"}>
-                      <%= gen.status %>
-                    </span>
-                  </td>
-                  <td class="px-4 py-2 font-mono text-sm"><%= Float.round(gen.fitness_score || 0.0, 4) %></td>
-                  <td class="px-4 py-2 text-sm"><%= short_model(gen.model_used) %></td>
-                  <td class="px-4 py-2 font-mono text-sm"><%= (gen.tokens_in || 0) + (gen.tokens_out || 0) %></td>
-                  <td class="px-4 py-2 text-sm text-gray-600 truncate max-w-xs"><%= gen.reasoning %></td>
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body p-5">
+          <h2 class="card-title text-sm font-semibold text-base-content/70 uppercase tracking-wider">Evolution History</h2>
+          <div class="overflow-x-auto mt-2">
+            <table class="table table-sm">
+              <thead>
+                <tr class="text-base-content/50">
+                  <th>Gen</th>
+                  <th>Module</th>
+                  <th>Status</th>
+                  <th>Score</th>
+                  <th>Model</th>
+                  <th>Tokens</th>
+                  <th>Reasoning</th>
                 </tr>
-              <% end %>
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                <%= for gen <- @generations do %>
+                  <tr class="hover">
+                    <td class="font-mono text-sm"><%= gen.generation_number %></td>
+                    <td class="text-sm"><%= short_module(gen.target_module) %></td>
+                    <td>
+                      <span class={"badge badge-sm #{status_badge(gen.status)}"}>
+                        <%= gen.status %>
+                      </span>
+                    </td>
+                    <td class="font-mono text-sm"><%= Float.round(gen.fitness_score || 0.0, 4) %></td>
+                    <td class="text-sm"><%= short_model(gen.model_used) %></td>
+                    <td class="font-mono text-sm"><%= (gen.tokens_in || 0) + (gen.tokens_out || 0) %></td>
+                    <td class="text-sm text-base-content/60 truncate max-w-xs"><%= gen.reasoning %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -205,9 +201,20 @@ defmodule EvoWeb.EvolutionLive do
 
   defp stat_card(assigns) do
     ~H"""
-    <div class="bg-white rounded-lg shadow p-4">
-      <div class="text-sm text-gray-500"><%= @title %></div>
-      <div class="text-2xl font-bold text-gray-900 mt-1"><%= @value %></div>
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body p-4">
+        <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider"><%= @title %></div>
+        <div class="text-xl font-bold text-base-content mt-1 font-mono"><%= @value %></div>
+      </div>
+    </div>
+    """
+  end
+
+  defp detail_row(assigns) do
+    ~H"""
+    <div class="flex justify-between items-center">
+      <span class="text-sm text-base-content/60"><%= @label %></span>
+      <span class="font-mono text-sm text-base-content"><%= @value %></span>
     </div>
     """
   end
@@ -226,10 +233,10 @@ defmodule EvoWeb.EvolutionLive do
     end
   end
 
-  defp status_color("accepted"), do: "bg-green-100 text-green-800"
-  defp status_color("accepted_neutral"), do: "bg-blue-100 text-blue-800"
-  defp status_color("rejected_regression"), do: "bg-red-100 text-red-800"
-  defp status_color("rejected_validation"), do: "bg-yellow-100 text-yellow-800"
-  defp status_color("error"), do: "bg-red-100 text-red-800"
-  defp status_color(_), do: "bg-gray-100 text-gray-800"
+  defp status_badge("accepted"), do: "badge-success"
+  defp status_badge("accepted_neutral"), do: "badge-info"
+  defp status_badge("rejected_regression"), do: "badge-error"
+  defp status_badge("rejected_validation"), do: "badge-warning"
+  defp status_badge("error"), do: "badge-error"
+  defp status_badge(_), do: "badge-neutral"
 end

@@ -1,5 +1,8 @@
 import Config
 
+# Skip API key validation in dev (set ANTHROPIC_API_KEY env var to actually evolve)
+config :evo, :skip_api_key_validation, true
+
 # Configure your database
 config :evo, Evo.Repo,
   database: Path.expand("../evo_dev.db", __DIR__),

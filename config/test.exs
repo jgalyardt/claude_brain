@@ -17,6 +17,9 @@ config :evo, EvoWeb.Endpoint,
   secret_key_base: "9kRNRrP6Tl8wxLH6lYVQ2x6NIey67Cb5u61JCq8OMaBT1L8SufTS6QF7EiWmrIpm",
   server: false
 
+# Skip API key validation in test
+config :evo, :skip_api_key_validation, true
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

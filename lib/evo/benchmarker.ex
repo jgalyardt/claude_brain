@@ -108,6 +108,11 @@ defmodule Evo.Benchmarker do
     {fn -> Evo.Evolvable.Strategy.select_target(0) end, []}
   end
 
+  defp benchmark_function(Evo.Evolvable.CreativeDisplay) do
+    stats = %{generation: 5, accept_rate: 50, budget_used: 30}
+    {fn -> Evo.Evolvable.CreativeDisplay.render(stats) end, []}
+  end
+
   defp benchmark_function(_module) do
     {fn -> :ok end, []}
   end
