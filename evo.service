@@ -12,12 +12,12 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-WorkingDirectory=/home/pi/claude_brain/evo
-EnvironmentFile=/home/pi/claude_brain/evo/.env
+User=tuffypi
+Group=tuffypi
+WorkingDirectory=/home/tuffypi/Projects/claude_brain
+EnvironmentFile=/home/tuffypi/Projects/claude_brain/.env
 Environment=MIX_ENV=prod
-ExecStart=/usr/local/bin/elixir --sname evo -S mix phx.server
+ExecStart=/bin/bash -lc 'cd /home/tuffypi/Projects/claude_brain && exec elixir --sname evo -S mix phx.server'
 Restart=on-failure
 RestartSec=5
 
