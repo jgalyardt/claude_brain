@@ -9,21 +9,44 @@ Evo runs a continuous evolution loop that proposes, validates, and applies code 
 1. **Benchmark** — Measure the current performance of a target module (execution time, memory, code size)
 2. **Propose** — Send the module source + benchmarks to Claude, requesting one focused improvement
 3. **Validate** — Run a 5-gate safety pipeline: size limits, AST allowlist, side-effect detection, compilation check, and test suite
-4. **Apply** — Write the new code to disk and hot-reload the module
+4. **Apply** — Write the new code to disk and hot-swap the module in the running VM (no restart)
 5. **Evaluate** — Re-benchmark and compare fitness (60% time, 30% memory, 10% code size). Rollback if regressed
 6. **Record** — Persist the generation to SQLite and git commit the change
 
+## The Self-Modifying Mechanism
+
+This is not Phoenix's development-mode file watcher. The system uses the BEAM's native hot code loading to replace a live module while the application keeps running:
+
+```elixir
+:code.purge(module)      # unload the old bytecode
+:code.delete(module)     # remove it from the code server
+Code.compile_file(path)  # compile the new .ex file and load it
+```
+
+The sequence in `Evo.Applier` is:
+
+1. Claude returns a proposed rewrite of a module
+2. `Applier` writes the new source to disk (whitelisted paths only)
+3. The old module is purged from the BEAM's code server
+4. The new source is compiled in-process and loaded — immediately active for all subsequent calls
+5. If post-change benchmarks show a regression, `Applier.rollback/1` restores the original source and repeats the same hot-swap with the old code
+
+Because Erlang/OTP supports running two versions of a module simultaneously during a transition, in-flight calls to the old version complete normally while new calls dispatch to the replacement.
+
 ## The Evolvable Surface
 
-Only three modules are allowed to be modified by the system — the code that controls how it evolves:
+Only four modules are allowed to be modified — the code that controls how the system evolves:
 
 | Module | Role |
 |---|---|
 | `Evo.Evolvable.PromptBuilder` | Constructs the prompt sent to Claude |
 | `Evo.Evolvable.Fitness` | Evaluates before/after benchmark fitness |
 | `Evo.Evolvable.Strategy` | Selects which module to evolve next (round-robin) |
+| `Evo.Evolvable.CreativeDisplay` | Generates the animated SVG visualization on the dashboard |
 
-The Validator enforces an allowlist-based AST walk and the Applier has a hardcoded file whitelist — no other modules or paths can be written to.
+This is the recursive part: by targeting `PromptBuilder`, the system can rewrite the instructions it gives Claude; by targeting `Fitness`, it can redefine what counts as an improvement; by targeting `Strategy`, it can change which module it works on next.
+
+`Evo.Applier` enforces a hardcoded module→path whitelist and `Evo.Validator` enforces an allowlist-based AST walk — no other modules or paths can be written to regardless of what Claude proposes.
 
 ## Architecture
 

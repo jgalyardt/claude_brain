@@ -88,7 +88,7 @@ defmodule EvoWeb.EvolutionLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="space-y-6">
+    <div class="space-y-6 py-4">
       <!-- Header -->
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
